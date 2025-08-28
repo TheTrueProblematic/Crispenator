@@ -182,14 +182,16 @@
         }, { commandName: "Crispenator - Place output" });
     }
 
+    // Pick only supported sizes:
+    // 1024x1024, 1536x1024 for wide, 1024x1536 for tall
     function pickApiSize() {
         if (!app.documents.length) return "1024x1024";
         const w = Number(app.activeDocument.width) || 1024;
         const h = Number(app.activeDocument.height) || 1024;
         const aspect = w / h;
-        if (aspect >= 1.35) return "1792x1024";
-        if (aspect <= 0.74) return "1024x1792";
-        return "1024x1024";
+        if (aspect > 1.1) return "1536x1024";     // wide
+        if (aspect < 0.9) return "1024x1536";     // tall
+        return "1024x1024";                       // near square
     }
 
     async function callOpenAI(workFolder, apiKey) {
