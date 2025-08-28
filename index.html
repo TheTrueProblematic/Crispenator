@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Crispenator</title>
+    <link rel="stylesheet" href="styles.css" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';" />
+</head>
+<body>
+<header class="header">
+    <div class="brand">
+        <img src="icons/icon-48.png" class="logo" />
+        <div>
+            <div class="title">Crispenator</div>
+            <a class="link" id="ppLink" href="#">Privacy policy</a>
+        </div>
+    </div>
+    <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+</header>
+
+<main>
+    <button id="runBtn" class="big-btn">Upscale</button>
+
+    <div id="progressWrap" class="progress-wrap hidden">
+        <div class="progress-label">Generating upscaled image. This usually takes up to 30 seconds.</div>
+        <div class="progress">
+            <div id="bar" class="bar"></div>
+        </div>
+        <div id="pct" class="pct">0%</div>
+    </div>
+
+    <div id="status" class="status"></div>
+</main>
+
+<div id="modal" class="modal hidden">
+    <div class="modal-card">
+        <h3>OpenAI API key</h3>
+        <input id="apiKeyInput" type="password" placeholder="sk-..." />
+        <div class="modal-actions">
+            <button id="saveKey" class="btn">Save</button>
+            <button id="closeModal" class="btn secondary">Close</button>
+        </div>
+        <p class="hint">Saved in the plugin data folder. No permissions required.</p>
+    </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
