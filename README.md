@@ -59,11 +59,10 @@ These targets and permissions are declared in `manifest.json`.
 3. Add the plugin by selecting this folder that contains `manifest.json`.
 4. Click **Run** in UDT, then in Photoshop open **Window → Plugins → Crispenator**.
 
-### Option B. Package as a distributable
+### Option B. Install distributable
 
-Use the UXP Developer Tool to create a `.ccx` from this folder and install it through Creative Cloud Desktop.
+Download the latest release and install the ccx file through Creative Cloud Desktop.
 
-> Tip: During development you can keep the Developer Tool running so edits to HTML, CSS, or JS are picked up on reload.
 
 ---
 
