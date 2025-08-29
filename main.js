@@ -1,4 +1,4 @@
-// Crispenator UXP main.js - compatibility build without TextEncoder/TextDecoder and with placeEvent placement
+// Crispenator UXP main.js - adds retry with backoff and Retry-After handling
 (function () {
     const { app, action, core } = require("photoshop");
     const uxp = require("uxp");
@@ -55,6 +55,11 @@
         let s = "";
         for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]);
         return s;
+    }
+
+    // sleep helper for backoff
+    function sleep(ms) {
+        return new Promise(r => setTimeout(r, ms));
     }
 
     // data folder needs no permissions
@@ -182,8 +187,7 @@
         }, { commandName: "Crispenator - Place output" });
     }
 
-    // Pick only supported sizes:
-    // 1024x1024, 1536x1024 for wide, 1024x1536 for tall
+    // Pick supported sizes only
     function pickApiSize() {
         if (!app.documents.length) return "1024x1024";
         const w = Number(app.activeDocument.width) || 1024;
@@ -194,34 +198,97 @@
         return "1024x1024";                       // near square
     }
 
+    // Parse Retry-After header or seconds from error payload
+    function parseRetryAfter(resp, bodyText) {
+        const h = resp.headers && resp.headers.get ? resp.headers.get("retry-after") : null;
+        if (h) {
+            const n = Number(h);
+            if (!isNaN(n) && n >= 0) return Math.max(1, Math.floor(n));
+        }
+        if (bodyText) {
+            const m = bodyText.match(/after\s+([0-9]+(?:\.[0-9]+)?)\s*seconds?/i);
+            if (m) {
+                const n = Number(m[1]);
+                if (!isNaN(n)) return Math.max(1, Math.round(n));
+            }
+        }
+        return 1; // default
+    }
+
+    // Call OpenAI with retry and size fallback
     async function callOpenAI(workFolder, apiKey) {
         const input = await workFolder.getEntry("input.png");
         const ab = await readBinaryCompat(input);
         const blob = new Blob([ab], { type: "image/png" });
 
-        const form = new FormData();
-        form.append("model", "gpt-image-1");
-        form.append("prompt", PROMPT);
-        form.append("size", pickApiSize());
-        form.append("image", blob, "input.png");
+        // Primary size based on aspect, plus fallback to 1024 square
+        const primary = pickApiSize();
+        const sizes = primary === "1024x1024" ? ["1024x1024"] : [primary, "1024x1024"];
 
-        const resp = await fetch("https://api.openai.com/v1/images/edits", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${apiKey}` },
-            body: form
-        });
+        let lastErr = null;
 
-        if (!resp.ok) {
-            const text = await resp.text();
-            throw new Error(`OpenAI error ${resp.status}. ${text}`);
+        for (let sIdx = 0; sIdx < sizes.length; sIdx++) {
+            const size = sizes[sIdx];
+            // up to 5 tries with exponential backoff and jitter
+            let delayMs = 1000;
+            for (let attempt = 1; attempt <= 5; attempt++) {
+                try {
+                    const form = new FormData();
+                    form.append("model", "gpt-image-1");
+                    form.append("prompt", PROMPT);
+                    form.append("size", size);
+                    form.append("image", blob, "input.png");
+
+                    const resp = await fetch("https://api.openai.com/v1/images/edits", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${apiKey}` },
+                        body: form
+                    });
+
+                    if (resp.status === 429 || resp.status >= 500) {
+                        const text = await resp.text().catch(() => "");
+                        const waitSec = parseRetryAfter(resp, text);
+                        lastErr = new Error(`Rate limited. Waiting ${waitSec} seconds before retry ${attempt + 1} of 5 on ${size}.`);
+                        setStatus(lastErr.message, true);
+                        const jitter = Math.floor(Math.random() * 250);
+                        await sleep(waitSec * 1000 + jitter);
+                        // increase delay for next time if needed
+                        delayMs = Math.min(delayMs * 2, 16000);
+                        continue;
+                    }
+
+                    if (!resp.ok) {
+                        const text = await resp.text().catch(() => "");
+                        throw new Error(`OpenAI error ${resp.status}. ${text}`);
+                    }
+
+                    const data = await resp.json();
+                    const b64 = data && data.data && data.data[0] && data.data[0].b64_json;
+                    if (!b64) throw new Error("No image returned.");
+
+                    const out = await createOrGetFile(workFolder, "output.png");
+                    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+                    await writeBinaryCompat(out, bytes);
+                    return; // success
+                } catch (e) {
+                    lastErr = e;
+                    // Non retryable errors break out immediately
+                    const msg = String(e && e.message ? e.message : e);
+                    if (!/Rate limited|429|retry/i.test(msg)) {
+                        throw e;
+                    }
+                    // Otherwise do exponential backoff
+                    const jitter = Math.floor(Math.random() * 250);
+                    await sleep(delayMs + jitter);
+                    delayMs = Math.min(delayMs * 2, 16000);
+                }
+            }
+            // next size attempt
+            setStatus(`Could not generate at ${size}. Trying a smaller size if available.`, true);
         }
-        const data = await resp.json();
-        const b64 = data && data.data && data.data[0] && data.data[0].b64_json;
-        if (!b64) throw new Error("No image returned.");
 
-        const out = await createOrGetFile(workFolder, "output.png");
-        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-        await writeBinaryCompat(out, bytes);
+        // If we get here all attempts failed
+        throw lastErr || new Error("Image generation failed after retries.");
     }
 
     function runProgress(checkFn, onDone) {
