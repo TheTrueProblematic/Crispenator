@@ -111,6 +111,9 @@ The panel UI provides a progress bar, percent indicator, and status messages for
 
 ## Troubleshooting
 
+- **OpenAI error 429**
+  If your account with OpenAI or API key were created very recently, please wait for up to 24 hours before retrying.
+
 - **Nothing happens when I click Upscale**
   Make sure you have at least one open document and that an API key is saved. The panel will prompt for a key if none is found.
 
