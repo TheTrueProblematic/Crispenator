@@ -15,14 +15,17 @@
             <a class="link" id="ppLink" href="#">Privacy policy</a>
         </div>
     </div>
-    <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+<!--    <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>-->
 </header>
 
 <main>
-    <button id="runBtn" class="big-btn">Upscale</button>
+    <div class="btn-row">
+        <button id="upscaleBtn" class="big-btn">Upscale</button>
+        <button id="restoreBtn" class="big-btn secondary">Restore</button>
+    </div>
 
     <div id="progressWrap" class="progress-wrap hidden">
-        <div class="progress-label">Generating upscaled image. This usually takes up to 30 seconds.</div>
+        <div id="progressLabel" class="progress-label">Generating image. This usually takes up to 90 seconds.</div>
         <div class="progress">
             <div id="bar" class="bar"></div>
         </div>

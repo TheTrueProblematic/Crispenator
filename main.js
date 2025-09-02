@@ -5,10 +5,13 @@
     const fs = uxp.storage.localFileSystem;
     const shell = uxp.shell;
 
-    const PROMPT = "Upscale this image that was shot with a very nice camera, then down-sampled to low resolution to look like it was before it was down-sampled. It should be super full and high resolution and look sharp and crisp. If the input image is in color, keep the colors as accurate as possible. If the initial image isnt in color, colorize it as accurately as possible. Maintain the aspect ratio of the input image";
+    // Prompts
+    const UPSCALE_PROMPT = `Upscale and restore detail. Keep content identical. Preserve color and tone. Reduce artifacts. No new objects. Natural sharpness only. Maintain the aspect ratio of the input image. KEEP COLOR AND PROPORTIONS IDENTICAL!`;
+    const RESTORE_PROMPT = `Take this existing image and make it look like it was shot with an expensive, professional, modern camera. If it’s an old black and white image make it colored accurately. The outputed image should have impeccable depth of field and have a professional look, while maintaining all of the detail and recognizable attributes of the initial image`;
 
     // UI
-    const runBtn = document.getElementById("runBtn");
+    const upscaleBtn = document.getElementById("upscaleBtn");
+    const restoreBtn = document.getElementById("restoreBtn");
     const settingsBtn = document.getElementById("settingsBtn");
     const modal = document.getElementById("modal");
     const apiKeyInput = document.getElementById("apiKeyInput");
@@ -18,6 +21,7 @@
     const progressWrap = document.getElementById("progressWrap");
     const bar = document.getElementById("bar");
     const pct = document.getElementById("pct");
+    const progressLabel = document.getElementById("progressLabel");
     const ppLink = document.getElementById("ppLink");
 
     // error surfacing
@@ -187,18 +191,12 @@
         }, { commandName: "Crispenator - Place output" });
     }
 
-    // Pick supported sizes only
+    // Use API auto sizing to preserve aspect
     function pickApiSize() {
-        if (!app.documents.length) return "1024x1024";
-        const w = Number(app.activeDocument.width) || 1024;
-        const h = Number(app.activeDocument.height) || 1024;
-        const aspect = w / h;
-        if (aspect > 1.1) return "1536x1024";     // wide
-        if (aspect < 0.9) return "1024x1536";     // tall
-        return "1024x1024";                       // near square
+        return "auto";
     }
 
-    // Parse Retry-After header or seconds from error payload
+    // Parse Retry After header or seconds from error payload
     function parseRetryAfter(resp, bodyText) {
         const h = resp.headers && resp.headers.get ? resp.headers.get("retry-after") : null;
         if (h) {
@@ -212,31 +210,31 @@
                 if (!isNaN(n)) return Math.max(1, Math.round(n));
             }
         }
-        return 1; // default
+        return 1;
     }
 
     // Call OpenAI with retry and size fallback
-    async function callOpenAI(workFolder, apiKey) {
+    async function callOpenAI(workFolder, apiKey, prompt) {
         const input = await workFolder.getEntry("input.png");
         const ab = await readBinaryCompat(input);
         const blob = new Blob([ab], { type: "image/png" });
 
-        // Primary size based on aspect, plus fallback to 1024 square
+        // Try auto first to preserve aspect, then fall back to square
         const primary = pickApiSize();
-        const sizes = primary === "1024x1024" ? ["1024x1024"] : [primary, "1024x1024"];
+        const sizes = primary === "auto" ? ["auto", "1024x1024"] : [primary];
 
         let lastErr = null;
 
         for (let sIdx = 0; sIdx < sizes.length; sIdx++) {
             const size = sizes[sIdx];
-            // up to 5 tries with exponential backoff and jitter
             let delayMs = 1000;
             for (let attempt = 1; attempt <= 5; attempt++) {
                 try {
                     const form = new FormData();
                     form.append("model", "gpt-image-1");
-                    form.append("prompt", PROMPT);
+                    form.append("prompt", prompt);
                     form.append("size", size);
+                    form.append("quality", "high");
                     form.append("image", blob, "input.png");
 
                     const resp = await fetch("https://api.openai.com/v1/images/edits", {
@@ -252,19 +250,23 @@
                         setStatus(lastErr.message, true);
                         const jitter = Math.floor(Math.random() * 250);
                         await sleep(waitSec * 1000 + jitter);
-                        // increase delay for next time if needed
                         delayMs = Math.min(delayMs * 2, 16000);
                         continue;
                     }
 
                     if (!resp.ok) {
                         const text = await resp.text().catch(() => "");
-                        throw new Error(`OpenAI error ${resp.status}. ${text}`);
+                        // Save error and break out to try next size rather than aborting
+                        lastErr = new Error(`OpenAI error ${resp.status}. ${text}`);
+                        break;
                     }
 
                     const data = await resp.json();
                     const b64 = data && data.data && data.data[0] && data.data[0].b64_json;
-                    if (!b64) throw new Error("No image returned.");
+                    if (!b64) {
+                        lastErr = new Error("No image returned.");
+                        break;
+                    }
 
                     const out = await createOrGetFile(workFolder, "output.png");
                     const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
@@ -272,28 +274,25 @@
                     return; // success
                 } catch (e) {
                     lastErr = e;
-                    // Non retryable errors break out immediately
                     const msg = String(e && e.message ? e.message : e);
                     if (!/Rate limited|429|retry/i.test(msg)) {
-                        throw e;
+                        // break attempts loop to try next size
+                        break;
                     }
-                    // Otherwise do exponential backoff
                     const jitter = Math.floor(Math.random() * 250);
                     await sleep(delayMs + jitter);
                     delayMs = Math.min(delayMs * 2, 16000);
                 }
             }
-            // next size attempt
-            setStatus(`Could not generate at ${size}. Trying a smaller size if available.`, true);
+            setStatus(`Could not generate at ${size}. Trying another size if available.`, true);
         }
 
-        // If we get here all attempts failed
         throw lastErr || new Error("Image generation failed after retries.");
     }
 
     function runProgress(checkFn, onDone) {
         const start = Date.now();
-        const DURATION = 30000;
+        const DURATION = 75000;
         let finished = false;
         const t = setInterval(async () => {
             const elapsed = Date.now() - start;
@@ -359,7 +358,7 @@
     closeModal.addEventListener("click", () => modal.classList.add("hidden"));
     document.addEventListener("keydown", e => { if (e.key === "Escape") modal.classList.add("hidden"); });
 
-    runBtn.addEventListener("click", async () => {
+    async function runWithPrompt(prompt, modeLabel) {
         try {
             setStatus("");
             const folder = await getWorkFolder();
@@ -375,11 +374,12 @@
             // Clear any old output so progress will not finish early
             await deleteIfExists(folder, "output.png");
 
-            setStatus("Generating ...");
+            progressLabel.textContent = `Generating ${modeLabel.toLowerCase()} image. This usually takes up to 90 seconds.`;
+            setStatus("Generating with high quality ...");
             showProgress();
 
             let apiError = null;
-            callOpenAI(folder, key).catch(e => { apiError = e; });
+            callOpenAI(folder, key, prompt).catch(e => { apiError = e; });
 
             runProgress(async () => {
                 if (apiError) throw apiError;
@@ -396,7 +396,10 @@
                 }
             });
         } catch (e) { showError(e); hideProgress(); }
-    });
+    }
+
+    upscaleBtn.addEventListener("click", () => runWithPrompt(UPSCALE_PROMPT, "Upscale"));
+    restoreBtn.addEventListener("click", () => runWithPrompt(RESTORE_PROMPT, "Restore"));
 
     setStatus("Crispenator ready.");
 })();
