@@ -1,29 +1,91 @@
 * { box-sizing: border-box; font-family: Segoe UI, Arial, sans-serif; }
-body { margin: 0; background: #1f1f1f; color: #e7e7e7; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #333; }
-.brand { display: flex; gap: 10px; align-items: center; }
-.logo { width: 28px; height: 28px; border-radius: 6px; }
-.title { font-weight: 600; }
-.link { color: #7fb5ff; text-decoration: none; font-size: 12px; }
-.icon-btn { background: transparent; border: 1px solid #3b3b3b; color: #e7e7e7; border-radius: 6px; padding: 6px 8px; cursor: pointer; }
 
-.btn-row { display: flex; gap: 10px; justify-content: center; margin: 22px 12px; }
-.big-btn { font-size: 20px; padding: 18px 26px; border-radius: 12px; border: 1px solid #3b3b3b; background: #2a2a2a; color: #e7e7e7; cursor: pointer; flex: 1; }
+/* Allow the host panel to shrink as small as possible */
+html, body { height: 100%; min-height: 220px; min-width: 0; }
+body { margin: 0; background: #1f1f1f; color: #e7e7e7; overflow: auto; line-height: 1.25; }
+
+/* Compact defaults to reduce minimum height */
+.header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #333; }
+.brand { display: flex; gap: 8px; align-items: center; }
+.logo { width: 20px; height: 20px; border-radius: 6px; }
+.title { font-weight: 600; font-size: 14px; }
+.link { color: #7fb5ff; text-decoration: none; font-size: 11px; }
+.icon-btn { background: transparent; border: 1px solid #3b3b3b; color: #e7e7e7; border-radius: 6px; padding: 4px 6px; cursor: pointer; }
+
+.btn-row { display: flex; gap: 8px; justify-content: center; margin: 8px 8px; }
+.big-btn { font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid #3b3b3b; background: #2a2a2a; color: #e7e7e7; cursor: pointer; flex: 1; }
 .big-btn.secondary { background: #262626; }
 .big-btn:hover { background: #333; }
 
-.progress-wrap { margin: 10px 12px; }
-.progress-label { font-size: 12px; margin-bottom: 8px; color: #bbb; }
-.progress { width: 100%; height: 14px; background: #2a2a2a; border: 1px solid #3b3b3b; border-radius: 8px; overflow: hidden; }
+.progress-wrap { margin: 6px 8px; }
+.progress-label { font-size: 11px; margin-bottom: 6px; color: #bbb; }
+.progress { width: 100%; height: 8px; background: #2a2a2a; border: 1px solid #3b3b3b; border-radius: 8px; overflow: hidden; }
 .bar { height: 100%; background: #4aa3ff; width: 0%; transition: width 0.15s linear; }
-.pct { font-size: 12px; color: #bbb; margin-top: 6px; text-align: right; }
-.status { padding: 8px 12px; min-height: 26px; color: #a8ffa8; }
+.pct { font-size: 11px; color: #bbb; margin-top: 4px; text-align: right; }
+.status { padding: 6px 8px; min-height: 0; font-size: 12px; color: #a8ffa8; }
 .hidden { display: none; }
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
-.modal-card { width: 360px; background: #242424; border: 1px solid #3b3b3b; border-radius: 10px; padding: 16px; }
-.modal-card h3 { margin-top: 0; }
-.modal-card input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #3b3b3b; background: #1a1a1a; color: #e7e7e7; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
-.btn { padding: 8px 12px; border-radius: 8px; border: 1px solid #3b3b3b; background: #2a2a2a; color: #e7e7e7; cursor: pointer; }
+
+/* Bottom sheet style settings panel */
+.modal {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+/* Ensure modal actually hides when .hidden is present */
+.modal.hidden { display: none; }
+
+.modal-card {
+    width: 100%;
+    max-width: 560px;
+    background: #242424;
+    border: 1px solid #3b3b3b;
+    border-bottom: none;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+    pointer-events: all;
+}
+.modal-card h3 { margin-top: 0; font-size: 14px; }
+.modal-card input { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #3b3b3b; background: #1a1a1a; color: #e7e7e7; font-size: 13px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.btn { padding: 6px 10px; border-radius: 8px; border: 1px solid #3b3b3b; background: #2a2a2a; color: #e7e7e7; cursor: pointer; font-size: 13px; }
 .btn.secondary { background: #1f1f1f; }
-.hint { font-size: 12px; color: #9a9a9a; }
+.hint { font-size: 11px; color: #9a9a9a; }
+
+/* Scale up gently when there is room */
+@media (min-height: 520px) {
+    .header { padding: 10px 12px; }
+    .brand { gap: 10px; }
+    .logo { width: 28px; height: 28px; }
+    .title { font-size: 16px; }
+    .link { font-size: 12px; }
+    .icon-btn { padding: 6px 8px; }
+
+    .btn-row { margin: 14px 12px; gap: 10px; }
+    .big-btn { font-size: 16px; padding: 12px 14px; border-radius: 10px; }
+
+    .progress-wrap { margin: 10px 12px; }
+    .progress-label { font-size: 12px; margin-bottom: 8px; }
+    .progress { height: 10px; }
+    .pct { font-size: 12px; margin-top: 6px; }
+
+    .status { padding: 8px 12px; font-size: 13px; }
+    .modal-card { padding: 16px; }
+    .modal-card h3 { font-size: 16px; }
+    .modal-card input { font-size: 14px; padding: 10px; }
+    .btn { font-size: 14px; padding: 8px 12px; }
+    .hint { font-size: 12px; }
+}
+
+/* Full comfort mode similar to original sizing */
+@media (min-height: 660px) {
+    .btn-row { margin: 22px 12px; }
+    .big-btn { font-size: 20px; padding: 18px 26px; border-radius: 12px; }
+    .progress { height: 14px; }
+}

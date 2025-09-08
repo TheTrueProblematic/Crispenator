@@ -292,7 +292,7 @@
 
     function runProgress(checkFn, onDone) {
         const start = Date.now();
-        const DURATION = 75000;
+        const DURATION = 90000;
         let finished = false;
         const t = setInterval(async () => {
             const elapsed = Date.now() - start;
@@ -337,26 +337,37 @@
         shell.openExternal("https://crispenator.com");
     });
 
-    settingsBtn.addEventListener("click", async () => {
-        try {
-            const folder = await getWorkFolder();
-            const k = await readApiKey(folder);
-            apiKeyInput.value = k || "";
-            modal.classList.remove("hidden");
-        } catch (e) { showError(e); }
+    // Settings button now toggles the bottom panel only
+    settingsBtn.addEventListener("click", () => {
+        const isHidden = modal.classList.contains("hidden");
+        modal.classList.toggle("hidden");
+        settingsBtn.setAttribute("aria-expanded", String(isHidden));
     });
 
+    // Save and close
     saveKey.addEventListener("click", async () => {
         try {
             const folder = await getWorkFolder();
             await saveApiKey(folder, apiKeyInput.value);
             setStatus("API key saved.");
             modal.classList.add("hidden");
+            settingsBtn.setAttribute("aria-expanded", "false");
         } catch (e) { showError(e); }
     });
 
-    closeModal.addEventListener("click", () => modal.classList.add("hidden"));
-    document.addEventListener("keydown", e => { if (e.key === "Escape") modal.classList.add("hidden"); });
+    // Close button now closes the settings panel
+    closeModal.addEventListener("click", () => {
+        modal.classList.add("hidden");
+        settingsBtn.setAttribute("aria-expanded", "false");
+    });
+
+    // Escape closes the panel if open
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+            modal.classList.add("hidden");
+            settingsBtn.setAttribute("aria-expanded", "false");
+        }
+    });
 
     async function runWithPrompt(prompt, modeLabel) {
         try {
@@ -365,6 +376,7 @@
             const key = await readApiKey(folder);
             if (!key) {
                 modal.classList.remove("hidden");
+                settingsBtn.setAttribute("aria-expanded", "true");
                 setStatus("Enter your OpenAI API key first.", true);
                 return;
             }
@@ -400,6 +412,20 @@
 
     upscaleBtn.addEventListener("click", () => runWithPrompt(UPSCALE_PROMPT, "Upscale"));
     restoreBtn.addEventListener("click", () => runWithPrompt(RESTORE_PROMPT, "Restore"));
+
+    // On launch, auto fill the API key if saved
+    (async function initPrefill() {
+        try {
+            const folder = await getWorkFolder();
+            const k = await readApiKey(folder);
+            if (k) {
+                apiKeyInput.value = k;
+            }
+        } catch (e) {
+            // do not block startup on this
+            console.warn("Could not prefill API key:", e);
+        }
+    })();
 
     setStatus("Crispenator ready.");
 })();

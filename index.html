@@ -15,7 +15,7 @@
             <a class="link" id="ppLink" href="#">Privacy policy</a>
         </div>
     </div>
-    <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+    <button id="settingsBtn" class="icon-btn" title="Settings" aria-expanded="false">⚙️</button>
 </header>
 
 <main>
@@ -35,7 +35,8 @@
     <div id="status" class="status"></div>
 </main>
 
-<div id="modal" class="modal hidden">
+<!-- Bottom settings panel -->
+<div id="modal" class="modal hidden" role="region" aria-label="OpenAI API key settings">
     <div class="modal-card">
         <h3>OpenAI API key</h3>
         <input id="apiKeyInput" type="password" placeholder="sk-..." />
