@@ -7,7 +7,7 @@ body { margin: 0; background: #1f1f1f; color: #e7e7e7; overflow: auto; line-heig
 /* Compact defaults to reduce minimum height */
 .header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #333; }
 .brand { display: flex; gap: 8px; align-items: center; }
-.logo { width: 20px; height: 20px; border-radius: 6px; }
+.logo { width: 20px; height: 20px; border-radius: 6px; margin-right: 10px;}
 .title { font-weight: 600; font-size: 14px; }
 .link { color: #7fb5ff; text-decoration: none; font-size: 11px; }
 .icon-btn { background: transparent; border: 1px solid #3b3b3b; color: #e7e7e7; border-radius: 6px; padding: 4px 6px; cursor: pointer; }

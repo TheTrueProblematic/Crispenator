@@ -231,7 +231,7 @@
             for (let attempt = 1; attempt <= 5; attempt++) {
                 try {
                     const form = new FormData();
-                    form.append("model", "gpt-image-1");
+                    form.append("model", "gpt-image-1.5");
                     form.append("prompt", prompt);
                     form.append("size", size);
                     form.append("quality", "high");
